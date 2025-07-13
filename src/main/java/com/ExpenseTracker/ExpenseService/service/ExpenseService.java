@@ -6,6 +6,8 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.ExpenseTracker.ExpenseService.dto.ExpenseDto;
+import com.ExpenseTracker.ExpenseService.dto.ExpenseEvent;
+import com.ExpenseTracker.ExpenseService.kafka.ExpenseProducer;
 import com.ExpenseTracker.ExpenseService.mapper.ExpenseMapper;
 import com.ExpenseTracker.ExpenseService.model.Expense;
 import com.ExpenseTracker.ExpenseService.repository.ExpenseRepositoryInterface;
@@ -15,10 +17,12 @@ public class ExpenseService implements ExpenseServiceInterface {
 
 	private final ExpenseRepositoryInterface expenseRepository;
 	private final ExpenseMapper mapper;
+	private final ExpenseProducer producer;
 	
-	public ExpenseService(ExpenseRepositoryInterface expenseRepository, ExpenseMapper mapper) {
+	public ExpenseService(ExpenseRepositoryInterface expenseRepository, ExpenseMapper mapper, ExpenseProducer producer) {
 		this.expenseRepository = expenseRepository;
 		this.mapper = mapper;
+		this.producer = producer;
 	}
 	
 	@Override
@@ -30,7 +34,13 @@ public class ExpenseService implements ExpenseServiceInterface {
 	public ExpenseDto addExpense(ExpenseDto expense) {
 		expense.setExpenseDate(LocalDate.now());
 		Expense savedExpense = expenseRepository.save(mapper.toEntity(expense));
-		return mapper.toDto(savedExpense);
+		ExpenseDto savedDto = mapper.toDto(savedExpense);
+		
+		ExpenseEvent event = new ExpenseEvent(savedDto, "CREATED");
+		
+		producer.publishExpense(event);
+		
+		return savedDto;
 	}
 
 	@Override
@@ -38,7 +48,14 @@ public class ExpenseService implements ExpenseServiceInterface {
 		if (id == null || !expenseRepository.existsById(id)) {
 	        throw new IllegalArgumentException("Expense not found or ID is missing.");
 	    }
+		
+		Expense toDelete = expenseRepository.findById(id).orElseThrow(() -> new RuntimeException("Expense not found"));
+		
 		expenseRepository.deleteById(id);
+		
+		ExpenseEvent event = new ExpenseEvent(mapper.toDto(toDelete), "DELETED");
+		
+		producer.publishExpense(event);
 		
 	}
 
@@ -50,7 +67,14 @@ public class ExpenseService implements ExpenseServiceInterface {
 		expense.setExpenseDate(LocalDate.now());
 		expense.setId(id);
 		Expense saved = expenseRepository.save(mapper.toEntity(expense));
-		return mapper.toDto(saved);
+		
+		ExpenseDto savedDto = mapper.toDto(saved);
+		
+		ExpenseEvent event = new ExpenseEvent(savedDto, "UPDATED");
+		
+		producer.publishExpense(event);
+		
+		return savedDto;
 	}
 
 	@Override
