@@ -1,6 +1,8 @@
 package com.ExpenseTracker.ExpenseService.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -36,7 +38,16 @@ public class ExpenseService implements ExpenseServiceInterface {
 		Expense savedExpense = expenseRepository.save(mapper.toEntity(expense));
 		ExpenseDto savedDto = mapper.toDto(savedExpense);
 		
-		ExpenseEvent event = new ExpenseEvent(savedDto, "CREATED");
+		ExpenseEvent event = new ExpenseEvent(
+		        "CREATED",
+		        savedDto.getId(),
+		        savedDto.getUserId(),
+		        savedDto.getAmount(),
+		        savedDto.getCategory(),
+		        savedDto.getDescription(),
+		        savedDto.getExpenseDate(),
+		        LocalDateTime.now()
+		    );
 		
 		producer.publishExpense(event);
 		
@@ -53,7 +64,16 @@ public class ExpenseService implements ExpenseServiceInterface {
 		
 		expenseRepository.deleteById(id);
 		
-		ExpenseEvent event = new ExpenseEvent(mapper.toDto(toDelete), "DELETED");
+		ExpenseEvent event = new ExpenseEvent(
+		        "DELETED",
+		        toDelete.getId(),
+		        toDelete.getUserId(),
+		        toDelete.getAmount(),
+		        toDelete.getCategory(),
+		        toDelete.getDescription(),
+		        toDelete.getExpenseDate(),
+		        LocalDateTime.now()
+		    );
 		
 		producer.publishExpense(event);
 		
@@ -70,7 +90,16 @@ public class ExpenseService implements ExpenseServiceInterface {
 		
 		ExpenseDto savedDto = mapper.toDto(saved);
 		
-		ExpenseEvent event = new ExpenseEvent(savedDto, "UPDATED");
+		ExpenseEvent event = new ExpenseEvent(
+		        "UPDATED",
+		        savedDto.getId(),
+		        savedDto.getUserId(),
+		        savedDto.getAmount(),
+		        savedDto.getCategory(),
+		        savedDto.getDescription(),
+		        savedDto.getExpenseDate(),
+		        LocalDateTime.now()
+		    );
 		
 		producer.publishExpense(event);
 		
